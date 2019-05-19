@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require "lightning/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "ruby-lightning"
+  spec.name          = "c-lightningrb"
   spec.version       = Lightning::VERSION
   spec.authors       = ["azuchi"]
   spec.email         = ["azuchi@chaintope.com"]
