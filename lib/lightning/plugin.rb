@@ -48,6 +48,7 @@ module Lightning
       socket_path = (Pathname.new(lightning_dir) + rpc_filename).to_path
       @rpc = Lightning::RPC.new(socket_path, log)
       @options.merge!(options)
+      nil
     end
 
     def getmanifest(request)
@@ -104,10 +105,8 @@ module Lightning
     def dispatch_request(request)
       method = methods[request.method]
       raise ArgumentError, "No method #{name} found." unless method
-      log.info "request.method_args = #{request.method_args}"
       result = request.method_args.empty? ? method.method.call(self) : method.method.call(*request.method_args, self)
-      log.info "result = #{result}"
-      request.apply_result(result)
+      request.apply_result(result) if result
     end
 
     def dispatch_notification(request)
