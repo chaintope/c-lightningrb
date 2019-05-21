@@ -8,16 +8,22 @@ module Lightning
     attr_reader :method
     attr_reader :params
     attr_accessor :result
+    attr_reader :log
 
     def initialize(plugin, id, method, params)
       @plugin = plugin
       @id = id
       @method = method
       @params = params
+      @log = plugin.log
     end
 
     def self.parse_from_json(plugin, json)
       self.new(plugin, json['id'], json['method']&.to_sym, json['params'])
+    end
+
+    def method_args
+      params.values
     end
 
     def apply_result(result)

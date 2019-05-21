@@ -1,4 +1,6 @@
 require 'json'
+require 'pathname'
+
 module Lightning
 
   class Method
@@ -25,6 +27,9 @@ module Lightning
     attr_reader :stdout
     attr_reader :stdin
     attr_reader :log
+    attr_accessor :lightning_dir
+    attr_accessor :rpc_filename
+    attr_accessor :rpc
 
     def initialize
       @methods = {init: Method.new(:init, self.method(:init))}
@@ -36,11 +41,16 @@ module Lightning
       @log = Lightning::Logger.create(:plugin)
     end
 
-    def init()
+    def init(options, configuration, request)
       log.info("init")
+      @lightning_dir = configuration['lightning-dir']
+      @rpc_filename = configuration['rpc-file']
+      socket_path = (Pathname.new(lightning_dir) + rpc_filename).to_path
+      @rpc = Lightning::RPC.new(socket_path, log)
+      @options.merge!(options)
     end
 
-    def getmanifest
+    def getmanifest(request)
       log.info("getmanifest")
       rpc_methods = []
       hooks = []
@@ -60,12 +70,17 @@ module Lightning
 
     def run
       log.info("Plugin run.")
+      begin
       partial = ''
       stdin.each_line do |l|
         partial << l
         msgs = partial.split("\n\n", -1)
         next if msgs.size < 2
         partial = multi_dispatch(msgs)
+      end
+      rescue Exception => e
+        log.error e
+        throw e
       end
       log.info("Plugin end.")
     end
@@ -74,7 +89,9 @@ module Lightning
 
     def multi_dispatch(msgs)
       msgs[0...-1].each do |payload|
-        request = Lightning::Request.parse_from_json(self, JSON.parse(payload))
+        json = JSON.parse(payload)
+        log.info("receive payload = #{json}")
+        request = Lightning::Request.parse_from_json(self, json)
         if request.id
           dispatch_request(request)
         else
@@ -85,19 +102,15 @@ module Lightning
     end
 
     def dispatch_request(request)
-      log.info("dispatch_request #{request}")
       method = methods[request.method]
       raise ArgumentError, "No method #{name} found." unless method
-      result = method.method.call
+      log.info "request.method_args = #{request.method_args}"
+      result = request.method_args.empty? ? method.method.call(self) : method.method.call(*request.method_args, self)
+      log.info "result = #{result}"
       request.apply_result(result)
     end
 
     def dispatch_notification(request)
-      log.info("dispatch_notification #{request}")
-    end
-
-    def exec_method(method, request)
-
     end
 
   end
