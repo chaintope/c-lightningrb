@@ -10,18 +10,59 @@ module Lightning
     attr_reader :name
     attr_reader :method
     attr_reader :type
+    attr_reader :usage
+    attr_reader :desc
+    attr_reader :long_desc
 
-    def initialize(name, method, type = TYPE[:rpc])
+    def initialize(name, method, usage, desc, type: TYPE[:rpc], long_desc: nil)
       @name = name
       @method = method
       @type = type
+      @usage = usage
+      @desc = desc
+      @long_desc = long_desc
+    end
+
+    def rpc?
+      type == TYPE[:rpc] && ![:init, :getmanifest].include?(name)
+    end
+
+    def hook?
+      type == TYPE[:hook]
+    end
+
+    def to_h
+      result = {name: name.to_s, usage: usage, description: desc}
+      result[:long_description] = long_desc if long_desc
+      result
     end
 
   end
 
   class Plugin
 
-    attr_reader :methods
+    class << self
+
+      def methods
+        @methods ||= {}
+      end
+
+      def desc(usage, desc, long_desc = nil)
+        @usage = usage
+        @desc = desc
+        @long_desc = long_desc
+      end
+
+      def define_rpc(name, &block)
+        m = name.to_sym
+        raise ArgumentError, "#{m} was already defined." if methods[m]
+        raise ArgumentError, "usage for #{m} dose not defined." unless @usage
+        raise ArgumentError, "description for #{m} dose not defined." unless @desc
+        methods[m] = Method.new(m, block, @usage, @desc, long_desc: @long_desc)
+      end
+
+    end
+
     attr_reader :subscriptions
     attr_reader :options
     attr_reader :stdout
@@ -32,12 +73,12 @@ module Lightning
     attr_accessor :rpc
 
     def initialize
-      @methods = {init: Method.new(:init, self.method(:init))}
+      methods[:init] = Method.new(:init, self.method(:init), nil, nil)
       @subscriptions = {}
       @options = {}
       @stdout = STDOUT
       @stdin = STDIN
-      methods[:getmanifest] = Method.new(:getmanifest, self.method(:getmanifest))
+      methods[:getmanifest] = Method.new(:getmanifest, self.method(:getmanifest), nil, nil)
       @log = Lightning::Logger.create(:plugin)
     end
 
@@ -51,22 +92,17 @@ module Lightning
       nil
     end
 
+    # get manifest information.
+    # @return [Hash] the manifest.
     def getmanifest(request)
       log.info("getmanifest")
-      rpc_methods = []
       hooks = []
       {
           options: options.values,
-          rpcmethods: rpc_methods,
+          rpcmethods: rpc_methods.map(&:to_h),
           subscriptions: subscriptions.keys,
           hooks: hooks,
       }
-    end
-
-    def add_method(name, lambda)
-      m = name.to_s
-      raise ArgumentError, "lambda: #{m} was already registered." if methods[m]
-      methods[m] = lambda
     end
 
     def run
@@ -87,6 +123,12 @@ module Lightning
     end
 
     private
+
+    # get method list
+    # @return [Array[Method]] the array of method.
+    def methods
+      self.class.methods # delegate to class instance
+    end
 
     def multi_dispatch(msgs)
       msgs[0...-1].each do |payload|
@@ -110,6 +152,14 @@ module Lightning
     end
 
     def dispatch_notification(request)
+    end
+
+    def rpc_methods
+      methods.values.select(&:rpc?)
+    end
+
+    def hook_methods
+      methods.values.select(&:hook?)
     end
 
   end

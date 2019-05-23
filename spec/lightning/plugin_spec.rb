@@ -4,13 +4,16 @@ RSpec.describe Lightning::Plugin do
 
   describe '#add_method' do
     it 'should be added to handle targets' do
-      plugin = Lightning::Plugin.new
-      hello = -> {puts "hello"}
-      plugin.add_method(:hello, hello)
-      # expect{plugin.}.to output("hello").to_stdout
+      cls = Lightning::Plugin
+      cls.desc 'name', 'say hello method.'
+      cls.define_rpc(:hello) do
+      end
+      cls.desc 'name', 'say hello2 method.'
+      cls.define_rpc(:hello2) do
+      end
 
-      # can not register same name method.
-      expect{plugin.add_method(:hello, hello)}.to raise_error(ArgumentError, "lambda: hello was already registered.")
+      # can not define same name method.
+      expect{cls.define_rpc(:hello){}}.to raise_error(ArgumentError, "hello was already defined.")
     end
   end
 

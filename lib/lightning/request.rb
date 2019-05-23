@@ -33,6 +33,7 @@ module Lightning
           id: id,
           result: result
       }.to_json
+      log.info "write response: #{json.to_s}"
       plugin.stdout.write(json.to_s + "\n\n")
       plugin.stdout.flush
     end
