@@ -23,7 +23,13 @@ module Lightning
     end
 
     def method_args
-      params.values
+      if params.is_a?(Array)
+        params
+      elsif params.is_a?(Hash)
+        params.values
+      else
+        raise ArgumentError, "params does not support format. #{params}"
+      end
     end
 
     def apply_result(result)

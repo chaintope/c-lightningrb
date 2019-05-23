@@ -82,7 +82,7 @@ module Lightning
       @log = Lightning::Logger.create(:plugin)
     end
 
-    def init(options, configuration, request)
+    def init(options, configuration, plugin)
       log.info("init")
       @lightning_dir = configuration['lightning-dir']
       @rpc_filename = configuration['rpc-file']
@@ -94,7 +94,7 @@ module Lightning
 
     # get manifest information.
     # @return [Hash] the manifest.
-    def getmanifest(request)
+    def getmanifest(plugin)
       log.info("getmanifest")
       hooks = []
       {
