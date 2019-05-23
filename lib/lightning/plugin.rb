@@ -53,12 +53,13 @@ module Lightning
         @long_desc = long_desc
       end
 
-      def define_rpc(name, &block)
+      def define_rpc(name, lambda)
         m = name.to_sym
+        raise ArgumentError, 'method must be implemented using lambda.' unless lambda.is_a?(Proc) && lambda.lambda?
         raise ArgumentError, "#{m} was already defined." if methods[m]
         raise ArgumentError, "usage for #{m} dose not defined." unless @usage
         raise ArgumentError, "description for #{m} dose not defined." unless @desc
-        methods[m] = Method.new(m, block, @usage, @desc, long_desc: @long_desc)
+        methods[m] = Method.new(m, lambda, @usage, @desc, long_desc: @long_desc)
       end
 
     end
@@ -105,6 +106,7 @@ module Lightning
       }
     end
 
+    # run plugin.
     def run
       log.info("Plugin run.")
       begin
