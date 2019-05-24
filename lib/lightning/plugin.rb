@@ -106,6 +106,11 @@ module Lightning
       }
     end
 
+    # shutdown this plugin.
+    def shutdown
+      log.info "Plugin shutdown"
+    end
+
     # run plugin.
     def run
       log.info("Plugin run.")
@@ -118,8 +123,12 @@ module Lightning
         partial = multi_dispatch(msgs)
       end
       rescue Exception => e
-        log.error e
-        throw e
+        if e.is_a?(Interrupt)
+          shutdown
+        else
+          log.error e
+          throw e
+        end
       end
       log.info("Plugin end.")
     end
