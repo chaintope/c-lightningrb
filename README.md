@@ -1,4 +1,4 @@
-# ruby-lightning: A ruby client library for lightningd
+# c-lightningrb: A ruby client library for lightningd
 
 This package implements the Unix socket based JSON-RPC protocol that 
 `lightningd` exposes to the rest of the world. 
@@ -10,7 +10,7 @@ and serves as a basis for plugins written in ruby.
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'ruby-lightning', require: 'lightning'
+gem 'c-lightningrb', require: 'lightning'
 ```
 
 And then execute:
@@ -19,7 +19,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install ruby-lightning
+    $ gem install c-lightningrb
 
 ## Examples
 

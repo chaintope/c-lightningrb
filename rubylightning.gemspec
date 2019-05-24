@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = 'A ruby client library for lightningd'
   spec.description   = 'A ruby client library for lightningd'
-  spec.homepage      = ""
+  spec.homepage      = "https://github.com/chaintope/c-lightningrb"
   spec.license       = "MIT"
 
   # Specify which files should be added to the gem when it is released.
