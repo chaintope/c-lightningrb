@@ -43,16 +43,31 @@ module Lightning
 
     class << self
 
+      # get RPM methods.
+      # @return [Hash] the hash of RPC method.
       def methods
         @methods ||= {}
       end
 
+      # get subscriptions
+      # @return [Hash] the hash of subscriptions
+      def subscriptions
+        @subscriptions ||= {}
+      end
+
+      # Define the definition of RPC method
+      # @param [String] usage the usage of RPC method.
+      # @param [String] desc the description of RPC method.
+      # @param [String] long_desc (Optional) the long description of RPC method.
       def desc(usage, desc, long_desc = nil)
         @usage = usage
         @desc = desc
         @long_desc = long_desc
       end
 
+      # Define RPC method.
+      # @param [String] name the name of rpc method.
+      # @param [Proc] lambda Lambda which is the substance of RPC method.
       def define_rpc(name, lambda)
         m = name.to_sym
         raise ArgumentError, 'method must be implemented using lambda.' unless lambda.is_a?(Proc) && lambda.lambda?
@@ -62,9 +77,18 @@ module Lightning
         methods[m] = Method.new(m, lambda, @usage, @desc, long_desc: @long_desc)
       end
 
+      # Define Event notification handler.
+      # @param [Symbol] event the event name.
+      # @param [Proc] lambda Lambda which is the event handler.
+      def subscribe(event, lambda)
+        e = event.to_sym
+        raise ArgumentError, 'handler must be implemented using lambda.' unless lambda.is_a?(Proc) && lambda.lambda?
+        raise ArgumentError, "Topic #{e} already has a handler." if subscriptions[e]
+        subscriptions[e] = lambda
+      end
+
     end
 
-    attr_reader :subscriptions
     attr_reader :options
     attr_reader :stdout
     attr_reader :stdin
@@ -75,7 +99,6 @@ module Lightning
 
     def initialize
       methods[:init] = Method.new(:init, self.method(:init), nil, nil)
-      @subscriptions = {}
       @options = {}
       @stdout = STDOUT
       @stdin = STDIN
@@ -83,7 +106,7 @@ module Lightning
       @log = Lightning::Logger.create(:plugin)
     end
 
-    def init(options, configuration, plugin)
+    def init(plugin, options, configuration)
       log.info("init")
       @lightning_dir = configuration['lightning-dir']
       @rpc_filename = configuration['rpc-file']
@@ -136,9 +159,14 @@ module Lightning
     private
 
     # get method list
-    # @return [Array[Method]] the array of method.
+    # @return [Hash] the hash of method.
     def methods
       self.class.methods # delegate to class instance
+    end
+
+    # get subscriptions
+    def subscriptions
+      self.class.subscriptions # delegate to class instance
     end
 
     def multi_dispatch(msgs)
@@ -157,12 +185,15 @@ module Lightning
 
     def dispatch_request(request)
       method = methods[request.method]
-      raise ArgumentError, "No method #{name} found." unless method
-      result = request.method_args.empty? ? method.method.call(self) : method.method.call(*request.method_args, self)
+      raise ArgumentError, "No method #{request.method} found." unless method
+      result = request.method_args.empty? ? method.method.call(self) : method.method.call(self, *request.method_args)
       request.apply_result(result) if result
     end
 
     def dispatch_notification(request)
+      handler = subscriptions[request.method]
+      raise ArgumentError, "No handler #{request.method} found." unless handler
+      request.method_args.empty? ? handler.call(self) : handler.call(self, *request.method_args)
     end
 
     def rpc_methods
