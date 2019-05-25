@@ -8,15 +8,13 @@ module Lightning
     TYPE = {rpc: 0, hook: 1}
 
     attr_reader :name
-    attr_reader :method
     attr_reader :type
     attr_reader :usage
     attr_reader :desc
     attr_reader :long_desc
 
-    def initialize(name, method, usage, desc, type: TYPE[:rpc], long_desc: nil)
+    def initialize(name, usage = nil, desc = nil, type: TYPE[:rpc], long_desc: nil)
       @name = name
-      @method = method
       @type = type
       @usage = usage
       @desc = desc
@@ -52,7 +50,7 @@ module Lightning
       # get subscriptions
       # @return [Hash] the hash of subscriptions
       def subscriptions
-        @subscriptions ||= {}
+        @subscriptions ||= []
       end
 
       # Define the definition of RPC method
@@ -74,7 +72,8 @@ module Lightning
         raise ArgumentError, "#{m} was already defined." if methods[m]
         raise ArgumentError, "usage for #{m} dose not defined." unless @usage
         raise ArgumentError, "description for #{m} dose not defined." unless @desc
-        methods[m] = Method.new(m, lambda, @usage, @desc, long_desc: @long_desc)
+        define_method(m, lambda)
+        methods[m] = Method.new(m, @usage, @desc, long_desc: @long_desc)
       end
 
       # Define Event notification handler.
@@ -83,8 +82,9 @@ module Lightning
       def subscribe(event, lambda)
         e = event.to_sym
         raise ArgumentError, 'handler must be implemented using lambda.' unless lambda.is_a?(Proc) && lambda.lambda?
-        raise ArgumentError, "Topic #{e} already has a handler." if subscriptions[e]
-        subscriptions[e] = lambda
+        raise ArgumentError, "Topic #{e} already has a handler." if subscriptions.include?(e)
+        define_method(e, lambda)
+        subscriptions << e
       end
 
       # Define hook handler.
@@ -94,7 +94,8 @@ module Lightning
         e = event.to_sym
         raise ArgumentError, 'handler must be implemented using lambda.' unless lambda.is_a?(Proc) && lambda.lambda?
         raise ArgumentError, "Hook #{e} was already registered." if methods[e]
-        methods[e] = Method.new(e, lambda, nil, nil, type: Method::TYPE[:hook])
+        define_method(e, lambda)
+        methods[e] = Method.new(e, type: Method::TYPE[:hook])
       end
 
     end
@@ -108,15 +109,15 @@ module Lightning
     attr_accessor :rpc
 
     def initialize
-      methods[:init] = Method.new(:init, self.method(:init), nil, nil)
+      methods[:init] = Method.new(:init)
       @options = {}
       @stdout = STDOUT
       @stdin = STDIN
-      methods[:getmanifest] = Method.new(:getmanifest, self.method(:getmanifest), nil, nil)
+      methods[:getmanifest] = Method.new(:getmanifest)
       @log = Lightning::Logger.create(:plugin)
     end
 
-    def init(plugin, options, configuration)
+    def init(options, configuration)
       log.info("init")
       @lightning_dir = configuration['lightning-dir']
       @rpc_filename = configuration['rpc-file']
@@ -128,12 +129,12 @@ module Lightning
 
     # get manifest information.
     # @return [Hash] the manifest.
-    def getmanifest(plugin)
+    def getmanifest
       log.info("getmanifest")
       {
           options: options.values,
           rpcmethods: rpc_methods.map(&:to_h),
-          subscriptions: subscriptions.keys,
+          subscriptions: subscriptions,
           hooks: hook_methods.map(&:name),
       }
     end
@@ -195,14 +196,14 @@ module Lightning
     def dispatch_request(request)
       method = methods[request.method]
       raise ArgumentError, "No method #{request.method} found." unless method
-      result = request.method_args.empty? ? method.method.call(self) : method.method.call(self, *request.method_args)
+      result = request.method_args.empty? ? send(method.name) : send(method.name, *request.method_args)
       request.apply_result(result) if result
     end
 
     def dispatch_notification(request)
-      handler = subscriptions[request.method]
-      raise ArgumentError, "No handler #{request.method} found." unless handler
-      request.method_args.empty? ? handler.call(self) : handler.call(self, *request.method_args)
+      name = request.method
+      raise ArgumentError, "No handler #{request.method} found." unless subscriptions.include?(request.method)
+      request.method_args.empty? ? send(name) : send(name, *request.method_args)
     end
 
     def rpc_methods
