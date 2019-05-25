@@ -38,4 +38,20 @@ RSpec.describe Lightning::Plugin do
     end
   end
 
+  describe 'define hook' do
+    it 'should be added' do
+      cls = Lightning::Plugin
+      cls.hook :peer_connected, ->(){{result: 'continue'}}
+
+      # can not define same name handler.
+      expect{cls.hook(:peer_connected, ->(){{result: 'continue'}})}.to raise_error(ArgumentError, "Hook peer_connected was already registered.")
+
+      # define using proc
+      expect{cls.hook(:proc, Proc.new{})}.to raise_error(ArgumentError, "handler must be implemented using lambda.")
+
+      # define using hash
+      expect{cls.hook(:block, {})}.to raise_error(ArgumentError, "handler must be implemented using lambda.")
+    end
+  end
+
 end

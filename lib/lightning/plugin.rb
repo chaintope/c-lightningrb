@@ -87,6 +87,16 @@ module Lightning
         subscriptions[e] = lambda
       end
 
+      # Define hook handler.
+      # @param [Symbol] event the event name.
+      # @param [Proc] lambda Lambda which is the event handler.
+      def hook(event, lambda)
+        e = event.to_sym
+        raise ArgumentError, 'handler must be implemented using lambda.' unless lambda.is_a?(Proc) && lambda.lambda?
+        raise ArgumentError, "Hook #{e} was already registered." if methods[e]
+        methods[e] = Method.new(e, lambda, nil, nil, type: Method::TYPE[:hook])
+      end
+
     end
 
     attr_reader :options
@@ -120,12 +130,11 @@ module Lightning
     # @return [Hash] the manifest.
     def getmanifest(plugin)
       log.info("getmanifest")
-      hooks = []
       {
           options: options.values,
           rpcmethods: rpc_methods.map(&:to_h),
           subscriptions: subscriptions.keys,
-          hooks: hooks,
+          hooks: hook_methods.map(&:name),
       }
     end
 
