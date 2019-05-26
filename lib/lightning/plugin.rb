@@ -122,7 +122,7 @@ module Lightning
       @lightning_dir = configuration['lightning-dir']
       @rpc_filename = configuration['rpc-file']
       socket_path = (Pathname.new(lightning_dir) + rpc_filename).to_path
-      @rpc = Lightning::RPC.new(socket_path, log)
+      @rpc = Lightning::RPC.new(socket_path)
       @options.merge!(options)
       nil
     end
@@ -148,20 +148,16 @@ module Lightning
     def run
       log.info("Plugin run.")
       begin
-      partial = ''
-      stdin.each_line do |l|
-        partial << l
-        msgs = partial.split("\n\n", -1)
-        next if msgs.size < 2
-        partial = multi_dispatch(msgs)
-      end
-      rescue Exception => e
-        if e.is_a?(Interrupt)
-          shutdown
-        else
-          log.error e
-          throw e
+        partial = ''
+        stdin.each_line do |l|
+          partial << l
+          msgs = partial.split("\n\n", -1)
+          next if msgs.size < 2
+          partial = multi_dispatch(msgs)
         end
+      rescue Interrupt
+        log.info "Interrupt occue."
+        shutdown
       end
       log.info("Plugin end.")
     end
@@ -194,16 +190,25 @@ module Lightning
     end
 
     def dispatch_request(request)
-      method = methods[request.method]
-      raise ArgumentError, "No method #{request.method} found." unless method
-      result = request.method_args.empty? ? send(method.name) : send(method.name, *request.method_args)
-      request.apply_result(result) if result
+      begin
+        method = methods[request.method]
+        raise ArgumentError, "No method #{request.method} found." unless method
+        result = request.method_args.empty? ? send(method.name) : send(method.name, *request.method_args)
+        request.apply_result(result) if result
+      rescue Exception => e
+        log.error e
+        request.write_error(e)
+      end
     end
 
     def dispatch_notification(request)
-      name = request.method
-      raise ArgumentError, "No handler #{request.method} found." unless subscriptions.include?(request.method)
-      request.method_args.empty? ? send(name) : send(name, *request.method_args)
+      begin
+        name = request.method
+        raise ArgumentError, "No handler #{request.method} found." unless subscriptions.include?(request.method)
+        request.method_args.empty? ? send(name) : send(name, *request.method_args)
+      rescue Exception => e
+        log.error e
+      end
     end
 
     def rpc_methods

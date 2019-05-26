@@ -32,6 +32,8 @@ module Lightning
       end
     end
 
+    # write response
+    # @param [Hash] result the content of response
     def apply_result(result)
       @result = result
       json = {
@@ -39,8 +41,27 @@ module Lightning
           id: id,
           result: result
       }.to_json
-      log.info "write response: #{json.to_s}"
-      plugin.stdout.write(json.to_s + "\n\n")
+      write(json.to_s)
+    end
+
+    # write error
+    # @param [Exception] e an error.
+    def write_error(e)
+      error = {message: e.message}
+      error[:code] = e.code if e.is_a?(Lightning::RPCError)
+      json = {
+          jsonrpc: '2.0',
+          id: id,
+          error: error
+      }.to_json
+      write(json.to_s)
+    end
+
+    private
+
+    def write(content)
+      log.info "write response: #{content}"
+      plugin.stdout.write(content + "\n\n")
       plugin.stdout.flush
     end
 
