@@ -21,6 +21,56 @@ Or install it yourself as:
 
 ## Examples
 
+### Using the JSON-RPC client
+
+```ruby
+require 'lightning'
+
+# initialize RPC interface using unix socket file.
+rpc = Lightning::RPC.new('/home/azuchi/.lightning/lightning-rpc')
+
+puts rpc.getinfo
+
+=> {
+  "id": "02a7581f5aafd3ed01a6664ad5108ce1601435d9e9e47c57f1c40cff152cd59307",
+  "alias": "GREENPHOTO",
+  "color": "02a758",
+  "num_peers": 0,
+  "num_pending_channels": 0,
+  "num_active_channels": 0,
+  "num_inactive_channels": 0,
+  "address": [
+
+  ],
+  "binding": [
+    {
+      "type": "ipv6",
+      "address": "::",
+      "port": 9735
+    },
+    {
+      "type": "ipv4",
+      "address": "0.0.0.0",
+      "port": 9735
+    }
+  ],
+  "version": "v0.7.0",
+  "blockheight": 1518441,
+  "network": "testnet",
+  "msatoshi_fees_collected": 0,
+  "fees_collected_msat": "0msat"
+}
+
+puts rpc.invoice(1000, 'example', 'test payment')
+
+=> {
+     "payment_hash": "76b2f5d6791a2e0be44071543c71d27238e2153fd832ac23d8c027b33e024fb8",
+     "expires_at": 1558856940,
+     "bolt11": "lntb10n1pww5dkupp5w6e0t4nerghqhezqw92rcuwjwguwy9flmqe2cg7ccqnmx0szf7uqdq5w3jhxapqwpshjmt9de6qcqp2phn9mgplxj2mxg59zjrlhwh2p66h2r3p4f7kyk8w4s3zcma5htn807r8lgfmg75hwcvhse8sqtgcyakgezdzjc0zyd87uahe3wsz3qcp4nv6f0",
+     "warning_capacity": "No channels have sufficient incoming capacity"
+   }
+```
+
 ### Writing a plugin
 
 You can write your own Plugin by inheriting `Lightning::Plugin`.
