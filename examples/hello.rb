@@ -9,6 +9,8 @@ class HelloPlugin < Lightning::Plugin
     "hello #{name}"
   end
 
+  option 'greeting', 'World', "What name should I call you?"
+
 end
 
 p = HelloPlugin.new
