@@ -156,7 +156,7 @@ module Lightning
           partial = multi_dispatch(msgs)
         end
       rescue Interrupt
-        log.info "Interrupt occue."
+        log.info "Interrupt occur."
         shutdown
       end
       log.info("Plugin end.")
