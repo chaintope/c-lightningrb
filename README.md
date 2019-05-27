@@ -80,6 +80,9 @@ You can write your own Plugin by inheriting `Lightning::Plugin`.
 require 'lightning'
 
 class HelloPlugin < Lightning::Plugin
+  
+  # Command line option pass-through
+  option 'greeting', 'World', "What name should I call you?"
 
   # define new rpc. Usage and description are required only for the definition of RPC.
   desc '[name]', 'Returns a personalized greeting for {greeting} (set via options).'
@@ -111,6 +114,7 @@ p.run
 
 Write all RPC, notification, and hook handlers in Lambda. 
 These Lambdas are implemented as methods, so you can access any of the fields and methods of the Plugin.
+For example, `Lightning::Plugin` instance has `rpc` field which can access `lightningd` via `Lightning::RPC`.
 
 And it works if you specify Plugin as the parameter when c-lightning launches.
 
