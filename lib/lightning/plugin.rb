@@ -53,6 +53,20 @@ module Lightning
         @subscriptions ||= []
       end
 
+      # get options
+      def options
+        @options ||= []
+      end
+
+      # Define option for lightningd command line.
+      # @param [String] name option name.
+      # @param [String] default default value.
+      # @param [String] description description.
+      def option(name, default, description)
+        # currently only string options are supported.
+        options << {name: name, default: default, description: description, type: 'string'}
+      end
+
       # Define the definition of RPC method
       # @param [String] usage the usage of RPC method.
       # @param [String] desc the description of RPC method.
@@ -100,7 +114,6 @@ module Lightning
 
     end
 
-    attr_reader :options
     attr_reader :stdout
     attr_reader :stdin
     attr_reader :log
@@ -110,20 +123,21 @@ module Lightning
 
     def initialize
       methods[:init] = Method.new(:init)
-      @options = {}
       @stdout = STDOUT
       @stdin = STDIN
       methods[:getmanifest] = Method.new(:getmanifest)
       @log = Lightning::Logger.create(:plugin)
     end
 
-    def init(options, configuration)
+    def init(opts, configuration)
       log.info("init")
       @lightning_dir = configuration['lightning-dir']
       @rpc_filename = configuration['rpc-file']
       socket_path = (Pathname.new(lightning_dir) + rpc_filename).to_path
       @rpc = Lightning::RPC.new(socket_path)
-      @options.merge!(options)
+      opts.each do |key, value|
+        options.find{|o|o[:name] == key}[:value] = value
+      end
       nil
     end
 
@@ -132,7 +146,7 @@ module Lightning
     def getmanifest
       log.info("getmanifest")
       {
-          options: options.values,
+          options: options,
           rpcmethods: rpc_methods.map(&:to_h),
           subscriptions: subscriptions,
           hooks: hook_methods.map(&:name),
@@ -173,6 +187,11 @@ module Lightning
     # get subscriptions
     def subscriptions
       self.class.subscriptions # delegate to class instance
+    end
+
+    # get options
+    def options
+      self.class.options # delegate to class instance
     end
 
     def multi_dispatch(msgs)
